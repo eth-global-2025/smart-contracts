@@ -4,14 +4,6 @@ pragma solidity ^0.8.20;
 import { IThesisHubToken } from "./IThesisHubToken.sol";
 
 interface IThesisHubMaster {
-    struct TokenInfoParams {
-        string cid;
-        string title;
-        address author;
-        string description;
-        uint256 costInNativeInWei;
-    }
-
     // struct CommentInfo {
     //     string comment;
     //     address author;
@@ -63,7 +55,7 @@ interface IThesisHubMaster {
     // function addComment(address _tokenAddress, string calldata _comment) external;
     function addThesis(
         bytes32 _salt,
-        TokenInfoParams calldata _tokenInfoParams
+        IThesisHubToken.TokenInfo calldata _tokenInfo
     )
         external
         returns (address tokenAddress);

@@ -51,20 +51,20 @@ contract ThesisHubMaster is Initializable, PausableUpgradeable, ReentrancyGuardU
         maxDescriptionLength = _maxDescriptionLength;
     }
 
-    modifier isValidThesis(TokenInfoParams calldata _tokenInfoParams) {
-        if (bytes(_tokenInfoParams.cid).length == 0) {
+    modifier isValidThesis(IThesisHubToken.TokenInfo calldata _tokenInfo) {
+        if (bytes(_tokenInfo.cid).length == 0) {
             revert InvalidCid();
         }
-        if (tokenData[_tokenInfoParams.cid] != address(0)) {
+        if (tokenData[_tokenInfo.cid] != address(0)) {
             revert ThesisAlreadyAdded();
         }
-        if (bytes(_tokenInfoParams.title).length == 0) {
+        if (bytes(_tokenInfo.title).length == 0) {
             revert EmptyTitle();
         }
-        if (bytes(_tokenInfoParams.title).length > maxTitleLength) {
+        if (bytes(_tokenInfo.title).length > maxTitleLength) {
             revert TitleLengthTooBig();
         }
-        if (bytes(_tokenInfoParams.description).length > maxDescriptionLength) {
+        if (bytes(_tokenInfo.description).length > maxDescriptionLength) {
             revert DescriptionTooBig();
         }
         _;
@@ -127,12 +127,12 @@ contract ThesisHubMaster is Initializable, PausableUpgradeable, ReentrancyGuardU
 
     function addThesis(
         bytes32 _salt,
-        TokenInfoParams calldata _tokenInfoParams
+        IThesisHubToken.TokenInfo calldata _tokenInfo
     )
         external
         nonReentrant
         whenNotPaused
-        isValidThesis(_tokenInfoParams)
+        isValidThesis(_tokenInfo)
         returns (address tokenAddress)
     {
 
@@ -143,16 +143,16 @@ contract ThesisHubMaster is Initializable, PausableUpgradeable, ReentrancyGuardU
         tokenAddress =
             IThesisHubTokenFactory(tokenFactoryAddress).createToken(_salt, name, symbol, IThesisHubToken.TokenInfo({
                 author: msg.sender,
-                cid: _tokenInfoParams.cid,
-                title: _tokenInfoParams.title,
-                description: _tokenInfoParams.description,
-                costInNativeInWei: _tokenInfoParams.costInNativeInWei
+                cid: _tokenInfo.cid,
+                title: _tokenInfo.title,
+                description: _tokenInfo.description,
+                costInNativeInWei: _tokenInfo.costInNativeInWei
             }));
 
         tokenAddresses.push(tokenAddress);
-        tokenData[_tokenInfoParams.cid] = tokenAddress;
+        tokenData[_tokenInfo.cid] = tokenAddress;
 
-        emit ThesisAdded(_tokenInfoParams.title, _tokenInfoParams.cid, tokenAddress, msg.sender, _tokenInfoParams.costInNativeInWei, _tokenInfoParams.description);
+        emit ThesisAdded(_tokenInfo.title, _tokenInfo.cid, tokenAddress, msg.sender, _tokenInfo.costInNativeInWei, _tokenInfo.description);
     }
 
     // function addComment(
