@@ -16,6 +16,7 @@ contract DeployThesisHub is Script {
     ThesisHubMaster public thesisHubMaster;
     ThesisHubConfig public thesisHubConfig;
     ThesisHubTokenFactory public thesisHubTokenFactory;
+    address public pyUSD;
 
     address admin;
     uint256 maxTitleLength;
@@ -31,6 +32,8 @@ contract DeployThesisHub is Script {
         vm.startBroadcast();
 
         proxyAdmin = new ProxyAdmin(admin);
+
+        pyUSD = 0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9;
 
         ThesisHubConfig thesisHubConfigImpl = new ThesisHubConfig();
         TransparentUpgradeableProxy thesisHubConfigProxy =
@@ -51,12 +54,13 @@ contract DeployThesisHub is Script {
         thesisHubTokenFactory.__ThesisHubTokenFactory_Init(address(thesisHubConfig));
 
         thesisHubConfig.setUint256(ThesisHubConstants.PLATFORM_FEE, 500); // 5%
+        thesisHubConfig.setAddress(ThesisHubConstants.PYUSD_ADDRESS, address(pyUSD));
         thesisHubConfig.setAddress(ThesisHubConstants.THESIS_HUB_MASTER_ADDRESS, address(thesisHubMaster));
         thesisHubConfig.setAddress(ThesisHubConstants.TOKEN_FACTORY_ADDRESS, address(thesisHubTokenFactory));
 
+        console2.log("proxyAdmin deployed at: ", address(proxyAdmin));
         console2.log("thesisHubConfig deployed at: ", address(thesisHubConfig));
         console2.log("thesisHubMaster deployed at: ", address(thesisHubMaster));
-        console2.log("proxyAdmin deployed at: ", address(proxyAdmin));
         console2.log("thesisHubTokenFactory deployed at: ", address(thesisHubTokenFactory));
 
         // dXmaster.addAsset(bytes32(0), "test asset 0", "bafybeib3byag2t25vbzxjsrcc2r3amhedyxtsgynpz7gpbmdi6r3qmg53q", 0);

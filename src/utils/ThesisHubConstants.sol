@@ -9,4 +9,5 @@ library ThesisHubConstants {
 
     uint256 public constant DENOMINATOR = 10_000;
     bytes32 public constant PLATFORM_FEE = keccak256("PLATFORM_FEE");
+    bytes32 public constant PYUSD_ADDRESS = keccak256("PYUSD_ADDRESS");
 }

@@ -21,7 +21,7 @@ contract ThesisHubTokenFactoryTest is BaseTest {
                 cid: "assetcid",
                 author: user,
                 description: "description",
-                costInNativeInWei: 1 ether / 100
+                costInUSD: 1 ether / 100
             })
         );
 
@@ -32,7 +32,7 @@ contract ThesisHubTokenFactoryTest is BaseTest {
             title: "test asset 1",
             cid: "assetcid",
             description: "description",
-            costInNativeInWei: 1 ether / 100
+            costInUSD: 1 ether / 100
         });
     }
 

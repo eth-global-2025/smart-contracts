@@ -33,7 +33,7 @@ interface IThesisHubMaster {
     event TokenBought(address _tokenAddress, uint256 _amount, address _buyer);
     // event CommentAdded(address _assetAddress, string _comment, address _author);
     event ThesisAdded(
-        string _title, string _cid, address _tokenAddress, address _author, uint256 _costInNativeInWei, string _description
+        string _title, string _cid, address _tokenAddress, address _author, uint256 _costInUSD, string _description
     );
     event MaxDescriptionLengthUpdated(uint256 _maxDescriptionLength);
 
