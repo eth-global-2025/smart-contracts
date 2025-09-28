@@ -16,7 +16,7 @@ contract ThesisHubToken is ERC20, IThesisHubToken, Ownable {
     string public cid;
     string public title;
     string public description;
-    uint256 public costInNativeInWei;
+    uint256 public costInUSD;
     
     IThesisHubConfig public thesisHubConfig;
 
@@ -32,7 +32,7 @@ contract ThesisHubToken is ERC20, IThesisHubToken, Ownable {
         cid = _tokenInfoParams.cid;
         title = _tokenInfoParams.title;
         description = _tokenInfoParams.description;
-        costInNativeInWei = _tokenInfoParams.costInNativeInWei;
+        costInUSD = _tokenInfoParams.costInUSD;
         thesisHubConfig = IThesisHubConfig(_thesisHubConfig);
     }
 
@@ -48,7 +48,7 @@ contract ThesisHubToken is ERC20, IThesisHubToken, Ownable {
             cid: cid,
             title: title,
             description: description,
-            costInNativeInWei: costInNativeInWei,
+            costInUSD: costInUSD,
             author: owner()
         });
     }
@@ -61,10 +61,10 @@ contract ThesisHubToken is ERC20, IThesisHubToken, Ownable {
         _update(msg.sender, address(0), _amount);
     }
 
-    function setCostInNativeInWei(uint256 _costInNativeInWei) external onlyOwner {
-        costInNativeInWei = _costInNativeInWei;
+    function setCostInUSD(uint256 _costInUSD) external onlyOwner {
+        costInUSD = _costInUSD;
 
-        emit CostInNativeInWeiUpdated(costInNativeInWei);
+        emit CostUpdated(costInUSD);
     }
 
     function _update(address from, address to, uint256 amount) internal override {

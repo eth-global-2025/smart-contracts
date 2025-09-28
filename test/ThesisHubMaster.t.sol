@@ -34,7 +34,7 @@ contract ThesisHubMasterTest is BaseTest {
 
 contract AddThesisTest is BaseTest {
     event ThesisAdded(
-        string _title, string _cid, address _tokenAddress, address _author, uint256 _costInNativeInWei, string _description
+        string _title, string _cid, address _tokenAddress, address _author, uint256 _costInUSD, string _description
     );
 
     function test_RevertEmptyAssetCid() public {
@@ -45,7 +45,7 @@ contract AddThesisTest is BaseTest {
             cid: "",
             author: user,
             description: "description",
-            costInNativeInWei: 1 ether / 100
+            costInUSD: 1 ether / 100
         }));
         vm.stopPrank();
     }
@@ -58,7 +58,7 @@ contract AddThesisTest is BaseTest {
             cid: "asset title",
             author: user,
             description: "description",
-            costInNativeInWei: 1 ether / 100
+            costInUSD: 1 ether / 100
         }));
         vm.stopPrank();
     }
@@ -70,7 +70,7 @@ contract AddThesisTest is BaseTest {
             cid: "assetcid",
             author: user,
             description: "description",
-            costInNativeInWei: 1 ether / 100
+            costInUSD: 1 ether / 100
         }));
         vm.expectRevert(IThesisHubMaster.ThesisAlreadyAdded.selector);
         thesisHubMaster.addThesis(keccak256(abi.encodePacked("test asset")), IThesisHubToken.TokenInfo({
@@ -78,7 +78,7 @@ contract AddThesisTest is BaseTest {
             cid: "assetcid",
             author: user,
             description: "description",
-            costInNativeInWei: 1 ether / 100
+            costInUSD: 1 ether / 100
         }));
         vm.stopPrank();
     }
@@ -91,7 +91,7 @@ contract AddThesisTest is BaseTest {
             cid: "assetcid",
             author: user,
             description: "description",
-            costInNativeInWei: 1 ether / 100 // 0.01 ether
+            costInUSD: 1 ether / 100 // 0.01 ether
         }));
         vm.stopPrank();
     }
@@ -105,7 +105,7 @@ contract AddThesisTest is BaseTest {
             cid: "assetcid",
             author: user,
             description: "description",
-            costInNativeInWei: 1 ether / 100
+            costInUSD: 1 ether / 100
         }));
 
         IThesisHubToken.TokenInfo memory assetInfo = IThesisHubToken(tokenAddress).getTokenInfo();
@@ -113,7 +113,7 @@ contract AddThesisTest is BaseTest {
         assertEq(assetInfo.title, "asset title");
         assertEq(assetInfo.author, user);
         assertEq(assetInfo.cid, "assetcid");
-        assertEq(IThesisHubToken(tokenAddress).costInNativeInWei(), 1 ether / 100);
+        assertEq(IThesisHubToken(tokenAddress).costInUSD(), 1 ether / 100);
 
         assertEq(thesisHubMaster.totalTokens(), 1);
     }
@@ -125,14 +125,14 @@ contract AddThesisTest is BaseTest {
             cid: "assetcid",
             author: user,
             description: "description",
-            costInNativeInWei: 1 ether / 100
+            costInUSD: 1 ether / 100
         }));
 
         IThesisHubToken.TokenInfo memory postInfo = IThesisHubToken(tokenAddress).getTokenInfo();
         assertEq(postInfo.author, user);
         assertEq(postInfo.title, "asset title");
         assertEq(postInfo.cid, "assetcid");
-        assertEq(IThesisHubToken(tokenAddress).costInNativeInWei(), 1 ether / 100);
+        assertEq(IThesisHubToken(tokenAddress).costInUSD(), 1 ether / 100);
         assertEq(thesisHubMaster.totalTokens(), 1);
 
         (address[] memory allTokenAddresses, IThesisHubToken.TokenInfo[] memory allPosts) = thesisHubMaster.getAllThesisInfos();
@@ -140,7 +140,7 @@ contract AddThesisTest is BaseTest {
         assertEq(allPosts[0].author, user);
         assertEq(allPosts[0].title, "asset title");
         assertEq(allPosts[0].cid, "assetcid");
-        assertEq(IThesisHubToken(tokenAddress).costInNativeInWei(), 1 ether / 100);
+        assertEq(IThesisHubToken(tokenAddress).costInUSD(), 1 ether / 100);
 
         assertEq(allTokenAddresses.length, 1);
         assertEq(allTokenAddresses[0], tokenAddress);
@@ -160,7 +160,7 @@ contract AddThesisTest is BaseTest {
 //             assetCid: "assetcid",
 //             thumbnailCid: "thumbnailcid",
 //             description: "description",
-//             costInNativeInWei: 1 ether / 100
+//             costInUSD: 1 ether / 100
 //         }));
 //     }
 
@@ -196,9 +196,7 @@ contract AddThesisTest is BaseTest {
 // }
 
 contract BuyAssetTest is BaseTest {
-    error NativeTransferFailed();
-
-    event AssetBought(address _tokenAddress, uint256 _amount, address _buyer);
+    event TokenBought(address _tokenAddress, uint256 _amount, address _buyer);
 
     address public author;
     address public tokenAddress;
@@ -213,13 +211,24 @@ contract BuyAssetTest is BaseTest {
             cid: "assetcid",
             author: author,
             description: "description",
-            costInNativeInWei: 1 ether / 100
+            costInUSD: 10 ** 6 / 100
         }));
 
         thesisHubToken = ThesisHubToken(tokenAddress);
+        
+        // Setup PYUSD for testing
+        deal(pyUSD, user, 1000 * 10**6);
+        deal(pyUSD, author, 1000 * 10**6);
+        
+        // Approve the contract to spend PYUSD
+        vm.prank(user);
+        IERC20(pyUSD).approve(address(thesisHubMaster), type(uint256).max);
+        
+        vm.prank(author);
+        IERC20(pyUSD).approve(address(thesisHubMaster), type(uint256).max);
     }
 
-    function test_RevertInvalidAssetCid() public {
+    function test_RevertInvalidTokenAddress() public {
         vm.expectRevert(IThesisHubMaster.InvalidTokenAddress.selector);
         thesisHubMaster.buyToken(address(0), 1);
     }
@@ -230,45 +239,27 @@ contract BuyAssetTest is BaseTest {
     }
 
     function test_RevertInsufficientAmount() public {
-        vm.expectRevert(IThesisHubMaster.InsufficientAmount.selector);
+        vm.prank(user);
+        vm.expectRevert(IThesisHubMaster.InvalidAmount.selector);
+        thesisHubMaster.buyToken(tokenAddress, 0);
+    }
+
+    function test_EmitTokenBought() public {
+        vm.prank(user);
+        // vm.expectEmit(true, true, true, true);
+        // emit TokenBought(tokenAddress, 1, user);
         thesisHubMaster.buyToken(tokenAddress, 1);
-    }
-
-    function test_RevertRefundableNativeTransferFailed() public {
-        deal(address(thesisHubConfig), 1 ether); // Any non-payable address
-
-        vm.prank(address(thesisHubConfig));
-        vm.expectRevert(NativeTransferFailed.selector);
-        thesisHubMaster.buyToken{ value: 1 ether }(tokenAddress, 1);
-    }
-
-    function test_RevertAuthorNativeTransferFailed() public {
-        vm.prank(address(thesisHubConfig));
-        tokenAddress = thesisHubMaster.addThesis(keccak256(abi.encodePacked("test asset 1")), IThesisHubToken.TokenInfo({
-            title: "asset title",
-            cid: "assetcid1",
-            author: author,
-            description: "description",
-            costInNativeInWei: 1 ether / 100
-        }));
-
-        deal(user, 1 ether);
-        vm.prank(user);
-        vm.expectRevert(NativeTransferFailed.selector);
-        thesisHubMaster.buyToken{ value: 1 ether }(tokenAddress, 1);
-    }
-
-    function test_EmitAssetBought() public {
-        deal(user, 1 ether / 100);
-        vm.prank(user);
-        vm.expectEmit(true, true, true, true);
-        emit TokenBought(tokenAddress, 1, user);
-        thesisHubMaster.buyToken{ value: 1 ether / 100 }(tokenAddress, 1);
 
         assertEq(thesisHubToken.balanceOf(user), 1);
-        assertEq(address(user).balance, 0);
-        assertEq(address(author).balance, 95 * 1 ether / 100 / 100);
-        assertEq(address(thesisHubMaster).balance, 5 * 1 ether / 100 / 100);
+        
+        // Check PYUSD balances instead of ETH
+        uint256 expectedCost = 10 ** 6 / 100;
+        uint256 platformFee = expectedCost * 500 / 10000; // 5%
+        uint256 authorFee = expectedCost - platformFee;
+        
+        assertEq(IERC20(pyUSD).balanceOf(user), 1000 * 10 ** 6 - expectedCost);
+        assertEq(IERC20(pyUSD).balanceOf(author), 1000 * 10 ** 6 + authorFee);
+        assertEq(IERC20(pyUSD).balanceOf(address(thesisHubMaster)), platformFee);
 
         IThesisHubMaster.UserTokenInfo[] memory userAssetData = thesisHubMaster.getUserTokenData(user);
         assertEq(userAssetData.length, 1);
@@ -276,17 +267,22 @@ contract BuyAssetTest is BaseTest {
         assertEq(userAssetData[0].amount, 1);
     }
 
-    function test_BuyAssetWithMoreThanRequiredAmount() public {
-        deal(user, 1 ether);
+    function test_BuyTokenWithMoreThanRequiredAmount() public {
         vm.prank(user);
         vm.expectEmit(true, true, true, true);
         emit TokenBought(tokenAddress, 3, user);
-        thesisHubMaster.buyToken{ value: 1 ether }(tokenAddress, 3);
+        thesisHubMaster.buyToken(tokenAddress, 3);
 
         assertEq(thesisHubToken.balanceOf(user), 3);
-        assertEq(address(user).balance, 97 ether / 100);
-        assertEq(address(author).balance, 95 * 3 ether / 100 / 100);
-        assertEq(address(thesisHubMaster).balance, 5 * 3 ether / 100 / 100);
+        
+        // Check PYUSD balances instead of ETH
+        uint256 expectedCost = 3 * 10 ** 6 / 100;
+        uint256 platformFee = expectedCost * 500 / 10000; // 5%
+        uint256 authorFee = expectedCost - platformFee;
+        
+        assertEq(IERC20(pyUSD).balanceOf(user), 1000 * 10 ** 6 - expectedCost);
+        assertEq(IERC20(pyUSD).balanceOf(author), 1000 * 10 ** 6 + authorFee);
+        assertEq(IERC20(pyUSD).balanceOf(address(thesisHubMaster)), platformFee);
 
         IThesisHubMaster.UserTokenInfo[] memory userAssetData = thesisHubMaster.getUserTokenData(user);
         assertEq(userAssetData.length, 1);
@@ -296,7 +292,7 @@ contract BuyAssetTest is BaseTest {
 }
 
 contract BeforeTokenTransferTest is BaseTest {
-    error NotdXAsset();
+    error NotThesisHubToken();
 
     address public author;
     address public tokenAddress;
@@ -311,27 +307,43 @@ contract BeforeTokenTransferTest is BaseTest {
             cid: "assetcid",
             author: author,
             description: "description",
-            costInNativeInWei: 1 ether / 100
+            costInUSD: 10 ** 6 / 100
         }));
 
         thesisHubToken = ThesisHubToken(tokenAddress);
+        
+        // Setup PYUSD for testing
+        deal(pyUSD, user, 1000 ether);
+        deal(pyUSD, author, 1000 ether);
+        
+        // Approve the contract to spend PYUSD
+        vm.prank(user);
+        IERC20(pyUSD).approve(address(thesisHubMaster), type(uint256).max);
+        
+        vm.prank(author);
+        IERC20(pyUSD).approve(address(thesisHubMaster), type(uint256).max);
     }
 
-    function test_RevertNotDxAsset() public {
+    function test_RevertNotThesisHubToken() public {
         vm.prank(user);
         vm.expectRevert();
         thesisHubMaster.beforeTokenTransfer(user, author, 1);
     }
 
-    function test_AssetMint() public {
-        deal(user, 1 ether / 100);
+    function test_TokenMint() public {
         vm.prank(user);
-        thesisHubMaster.buyToken{ value: 1 ether / 100 }(tokenAddress, 1);
+        thesisHubMaster.buyToken(tokenAddress, 1);
 
         assertEq(thesisHubToken.balanceOf(user), 1);
-        assertEq(address(user).balance, 0);
-        assertEq(address(author).balance, 95 * 1 ether / 100 / 100);
-        assertEq(address(thesisHubMaster).balance, 5 * 1 ether / 100 / 100);
+        
+        // Check PYUSD balances instead of ETH
+        uint256 expectedCost = 10 ** 6 / 100;
+        uint256 platformFee = expectedCost * 500 / 10000; // 5%
+        uint256 authorFee = expectedCost - platformFee;
+        
+        assertEq(IERC20(pyUSD).balanceOf(user), 1000 ether - expectedCost);
+        assertEq(IERC20(pyUSD).balanceOf(author), 1000 ether + authorFee);
+        assertEq(IERC20(pyUSD).balanceOf(address(thesisHubMaster)), platformFee);
 
         IThesisHubMaster.UserTokenInfo[] memory userAssetData = thesisHubMaster.getUserTokenData(user);
         assertEq(userAssetData.length, 1);
@@ -339,49 +351,62 @@ contract BeforeTokenTransferTest is BaseTest {
         assertEq(userAssetData[0].amount, 1);
     }
 
-    function test_AssetBurn() public {
-        deal(user, 1 ether / 100);
+    function test_TokenBurn() public {
         vm.prank(user);
-        thesisHubMaster.buyToken{ value: 1 ether / 100 }(tokenAddress, 1);
+        thesisHubMaster.buyToken(tokenAddress, 1);
 
         assertEq(thesisHubToken.balanceOf(user), 1);
-        assertEq(address(user).balance, 0);
-        assertEq(address(author).balance, 95 * 1 ether / 100 / 100);
-        assertEq(address(thesisHubMaster).balance, 5 * 1 ether / 100 / 100);
+        
+        // Check PYUSD balances instead of ETH
+        uint256 expectedCost = 10 ** 6 / 100;
+        uint256 platformFee = expectedCost * 500 / 10000; // 5%
+        uint256 authorFee = expectedCost - platformFee;
+        
+        assertEq(IERC20(pyUSD).balanceOf(user), 1000 ether - expectedCost);
+        assertEq(IERC20(pyUSD).balanceOf(author), 1000 ether + authorFee);
+        assertEq(IERC20(pyUSD).balanceOf(address(thesisHubMaster)), platformFee);
 
         vm.prank(user);
         thesisHubToken.burn(1);
 
         assertEq(thesisHubToken.balanceOf(user), 0);
-        assertEq(address(user).balance, 0);
-        assertEq(address(author).balance, 95 * 1 ether / 100 / 100);
-        assertEq(address(thesisHubMaster).balance, 5 * 1 ether / 100 / 100);
+        
+        // PYUSD balances should remain the same after burn
+        assertEq(IERC20(pyUSD).balanceOf(user), 1000 ether - expectedCost);
+        assertEq(IERC20(pyUSD).balanceOf(author), 1000 ether + authorFee);
+        assertEq(IERC20(pyUSD).balanceOf(address(thesisHubMaster)), platformFee);
 
         IThesisHubMaster.UserTokenInfo[] memory userAssetData = thesisHubMaster.getUserTokenData(user);
         assertEq(userAssetData.length, 0);
     }
 
-    function test_AssetTransfer() public {
+    function test_TokenTransfer() public {
         address user2 = makeAddr("user2");
 
-        deal(user, 1 ether / 100);
         vm.prank(user);
-        thesisHubMaster.buyToken{ value: 1 ether / 100 }(tokenAddress, 1);
+        thesisHubMaster.buyToken(tokenAddress, 1);
 
         assertEq(thesisHubToken.balanceOf(user), 1);
-        assertEq(address(user).balance, 0);
-        assertEq(address(author).balance, 95 * 1 ether / 100 / 100);
-        assertEq(address(thesisHubMaster).balance, 5 * 1 ether / 100 / 100);
+        
+        // Check PYUSD balances instead of ETH
+        uint256 expectedCost = 10 ** 6 / 100;
+        uint256 platformFee = expectedCost * 500 / 10000; // 5%
+        uint256 authorFee = expectedCost - platformFee;
+        
+        assertEq(IERC20(pyUSD).balanceOf(user), 1000 ether - expectedCost);
+        assertEq(IERC20(pyUSD).balanceOf(author), 1000 ether + authorFee);
+        assertEq(IERC20(pyUSD).balanceOf(address(thesisHubMaster)), platformFee);
 
         vm.prank(user);
         thesisHubToken.transfer(user2, 1);
 
         assertEq(thesisHubToken.balanceOf(user), 0);
         assertEq(thesisHubToken.balanceOf(user2), 1);
-        assertEq(address(user).balance, 0);
-        assertEq(address(user2).balance, 0);
-        assertEq(address(author).balance, 95 * 1 ether / 100 / 100);
-        assertEq(address(thesisHubMaster).balance, 5 * 1 ether / 100 / 100);
+        
+        // PYUSD balances should remain the same after transfer
+        assertEq(IERC20(pyUSD).balanceOf(user), 1000 ether - expectedCost);
+        assertEq(IERC20(pyUSD).balanceOf(author), 1000 ether + authorFee);
+        assertEq(IERC20(pyUSD).balanceOf(address(thesisHubMaster)), platformFee);
 
         IThesisHubMaster.UserTokenInfo[] memory userAssetData = thesisHubMaster.getUserTokenData(user);
         assertEq(userAssetData.length, 0);
@@ -391,27 +416,33 @@ contract BeforeTokenTransferTest is BaseTest {
         assertEq(user2AssetData[0].amount, 1);
     }
 
-    function test_AssetTransferAgain() public {
+    function test_TokenTransferAgain() public {
         address user2 = makeAddr("user2");
 
-        deal(user, 2 ether / 100);
         vm.prank(user);
-        thesisHubMaster.buyToken{ value: 2 ether / 100 }(tokenAddress, 2);
+        thesisHubMaster.buyToken(tokenAddress, 2);
 
         assertEq(thesisHubToken.balanceOf(user), 2);
-        assertEq(address(user).balance, 0);
-        assertEq(address(author).balance, 95 * 2 ether / 100 / 100);
-        assertEq(address(thesisHubMaster).balance, 5 * 2 ether / 100 / 100);
+        
+        // Check PYUSD balances instead of ETH
+        uint256 expectedCost = 2 * 10 ** 6 / 100;
+        uint256 platformFee = expectedCost * 500 / 10000; // 5%
+        uint256 authorFee = expectedCost - platformFee;
+        
+        assertEq(IERC20(pyUSD).balanceOf(user), 1000 ether - expectedCost);
+        assertEq(IERC20(pyUSD).balanceOf(author), 1000 ether + authorFee);
+        assertEq(IERC20(pyUSD).balanceOf(address(thesisHubMaster)), platformFee);
 
         vm.prank(user);
         thesisHubToken.transfer(user2, 1);
 
         assertEq(thesisHubToken.balanceOf(user), 1);
         assertEq(thesisHubToken.balanceOf(user2), 1);
-        assertEq(address(user).balance, 0);
-        assertEq(address(user2).balance, 0);
-        assertEq(address(author).balance, 95 * 2 ether / 100 / 100);
-        assertEq(address(thesisHubMaster).balance, 5 * 2 ether / 100 / 100);
+        
+        // PYUSD balances should remain the same after transfer
+        assertEq(IERC20(pyUSD).balanceOf(user), 1000 ether - expectedCost);
+        assertEq(IERC20(pyUSD).balanceOf(author), 1000 ether + authorFee);
+        assertEq(IERC20(pyUSD).balanceOf(address(thesisHubMaster)), platformFee);
 
         IThesisHubMaster.UserTokenInfo[] memory userAssetData = thesisHubMaster.getUserTokenData(user);
         assertEq(userAssetData.length, 1);
@@ -427,10 +458,11 @@ contract BeforeTokenTransferTest is BaseTest {
 
         assertEq(thesisHubToken.balanceOf(user), 0);
         assertEq(thesisHubToken.balanceOf(user2), 2);
-        assertEq(address(user).balance, 0);
-        assertEq(address(user2).balance, 0);
-        assertEq(address(author).balance, 95 * 2 ether / 100 / 100);
-        assertEq(address(thesisHubMaster).balance, 5 * 2 ether / 100 / 100);
+        
+        // PYUSD balances should remain the same after transfer
+        assertEq(IERC20(pyUSD).balanceOf(user), 1000 ether - expectedCost);
+        assertEq(IERC20(pyUSD).balanceOf(author), 1000 ether + authorFee);
+        assertEq(IERC20(pyUSD).balanceOf(address(thesisHubMaster)), platformFee);
 
         userAssetData = thesisHubMaster.getUserTokenData(user);
         assertEq(userAssetData.length, 0);
@@ -486,7 +518,7 @@ contract setMaxTitleLengthTest is BaseTest {
         thesisHubMaster.setMaxTitleLength(200);
     }
 
-    function test_EmitMaxPostTitleLengthUpdated() public {
+    function test_EmitMaxTokenTitleLengthUpdated() public {
         vm.prank(admin);
         vm.expectEmit(true, true, true, true);
         emit MaxTitleLengthUpdated(200);

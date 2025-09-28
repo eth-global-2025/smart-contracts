@@ -10,42 +10,42 @@ import { IThesisHubMaster } from "../src/interfaces/IThesisHubMaster.sol";
 import { ThesisHubToken, IThesisHubToken } from "../src/Token/ThesisHubToken.sol";
 
 contract ThesisHubTokenTest is BaseTest {
-    event CostInNativeInWeiUpdated(uint256 _costInNativeInWei);
+    event CostUpdated(uint256 _costInUSD);
 
     function test_Initialization() public view {
         assertEq(thesisHubToken.owner(), user);
         assertEq(thesisHubToken.name(), "ThesisHubToken");
         assertEq(thesisHubToken.symbol(), "ThesisHubToken");
         assertEq(thesisHubToken.cid(), "thesiscid");
-        assertEq(thesisHubToken.costInNativeInWei(), 1 ether / 100);
+        assertEq(thesisHubToken.costInUSD(), 10 ** 6 / 100);
         assertEq(address(thesisHubToken.thesisHubConfig()), address(thesisHubConfig));
     }
 
-    function test_SetCostInNativeInWei() public {
+    function test_SetCostInUSD() public {
         vm.startPrank(user);
-        thesisHubToken.setCostInNativeInWei(2 ether / 100);
-        assertEq(thesisHubToken.costInNativeInWei(), 2 ether / 100);
+        thesisHubToken.setCostInUSD(2 ether / 100);
+        assertEq(thesisHubToken.costInUSD(), 2 ether / 100);
         vm.stopPrank();
     }
 
-    function test_SetCostInNativeInWei_NonAdmin() public {
+    function test_SetCostInUSD_NonAdmin() public {
         vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, admin));
-        thesisHubToken.setCostInNativeInWei(2 ether / 100);
+        thesisHubToken.setCostInUSD(2 ether / 100);
         vm.stopPrank();
     }
 
-    function test_SetCostInNativeInWei_Event() public {
+    function test_SetCostInUSD_Event() public {
         vm.startPrank(user);
         vm.expectEmit(true, true, true, true);
-        emit CostInNativeInWeiUpdated(2 ether / 100);
-        thesisHubToken.setCostInNativeInWei(2 ether / 100);
+        emit CostUpdated(2 ether / 100);
+        thesisHubToken.setCostInUSD(2 ether / 100);
         vm.stopPrank();
     }
 }
 
 contract MintTest is BaseTest {
-    error NotOwnerOrDxmaster();
+    error NotOwnerOrThesisHubMaster();
 
     function setUp() public override {
         super.setUp();
@@ -58,7 +58,7 @@ contract MintTest is BaseTest {
                 cid: "assetcid",
                 author: user,
                 description: "description",
-                costInNativeInWei: 1 ether / 100
+                costInUSD: 1 ether / 100
             })
         );
         
@@ -72,14 +72,14 @@ contract MintTest is BaseTest {
         vm.stopPrank();
     }
 
-    function test_Mint_Dxmaster() public {
+    function test_Mint_ThesisHubMaster() public {
         vm.startPrank(address(thesisHubMaster));
         thesisHubToken.mint(bot, 100);
         assertEq(thesisHubToken.balanceOf(bot), 100);
         vm.stopPrank();
     }
 
-    function test_Mint_NonOwnerOrDxmaster() public {
+    function test_Mint_NonOwnerOrThesisHubMaster() public {
         vm.startPrank(admin);
         vm.expectRevert(IThesisHubToken.NotOwnerOrThesisHubMaster.selector);
         thesisHubToken.mint(admin, 100);

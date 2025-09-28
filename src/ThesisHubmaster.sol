@@ -95,7 +95,7 @@ contract ThesisHubMaster is Initializable, PausableUpgradeable, ReentrancyGuardU
         if (_amount == 0) {
             revert InvalidAmount();
         }
-        if (IThesisHubToken(_tokenAddress).costInNativeInWei() * _amount > msg.value) {
+        if (IThesisHubToken(_tokenAddress).costInUSD() * _amount > IERC20(thesisHubConfig.getAddress(ThesisHubConstants.PYUSD_ADDRESS)).allowance(msg.sender, address(this))) {
             revert InsufficientAmount();
         }
         _;
@@ -146,13 +146,13 @@ contract ThesisHubMaster is Initializable, PausableUpgradeable, ReentrancyGuardU
                 cid: _tokenInfo.cid,
                 title: _tokenInfo.title,
                 description: _tokenInfo.description,
-                costInNativeInWei: _tokenInfo.costInNativeInWei
+                costInUSD: _tokenInfo.costInUSD
             }));
 
         tokenAddresses.push(tokenAddress);
         tokenData[_tokenInfo.cid] = tokenAddress;
 
-        emit ThesisAdded(_tokenInfo.title, _tokenInfo.cid, tokenAddress, msg.sender, _tokenInfo.costInNativeInWei, _tokenInfo.description);
+        emit ThesisAdded(_tokenInfo.title, _tokenInfo.cid, tokenAddress, msg.sender, _tokenInfo.costInUSD, _tokenInfo.description);
     }
 
     // function addComment(
@@ -175,7 +175,6 @@ contract ThesisHubMaster is Initializable, PausableUpgradeable, ReentrancyGuardU
         uint256 _amount
     )
         external
-        payable
         nonReentrant
         whenNotPaused
         onlyThesisHubToken(_tokenAddress)
@@ -183,7 +182,7 @@ contract ThesisHubMaster is Initializable, PausableUpgradeable, ReentrancyGuardU
     {
         IThesisHubToken.TokenInfo memory tokenInfo = IThesisHubToken(_tokenAddress).getTokenInfo();
 
-        _handleTransfer(_amount, msg.value, tokenInfo.costInNativeInWei, tokenInfo.author);
+        _handleTransfer(_amount, tokenInfo.costInUSD, tokenInfo.author);
 
         IThesisHubToken(_tokenAddress).mint(msg.sender, _amount);
 
@@ -275,25 +274,20 @@ contract ThesisHubMaster is Initializable, PausableUpgradeable, ReentrancyGuardU
 
     function _handleTransfer(
         uint256 _amount,
-        uint256 _msgValue,
-        uint256 _costInNativeInWei,
+        uint256 _costInUSD,
         address _author
     )
         internal
     {
-        uint256 totalAmount = _costInNativeInWei * _amount;
-
-        uint256 refundableAmount = _msgValue - totalAmount;
-        if (refundableAmount > 0) {
-            (bool refundableSuccess,) = payable(msg.sender).call{ value: refundableAmount }("");
-            if (!refundableSuccess) revert NativeTransferFailed();
+        uint256 totalAmountInUSD = _costInUSD * _amount;
+        if (totalAmountInUSD > 0) {
+            IERC20(thesisHubConfig.getAddress(ThesisHubConstants.PYUSD_ADDRESS)).safeTransferFrom(msg.sender, address(this), totalAmountInUSD);
         }
 
-        uint256 platformFee = totalAmount * thesisHubConfig.getUint256(ThesisHubConstants.PLATFORM_FEE) / ThesisHubConstants.DENOMINATOR;
-        uint256 authorFee = totalAmount - platformFee;
-        if (authorFee > 0) {
-            (bool authorSuccess,) = payable(_author).call{ value: authorFee }("");
-            if (!authorSuccess) revert NativeTransferFailed();
+        uint256 platformFee = totalAmountInUSD * thesisHubConfig.getUint256(ThesisHubConstants.PLATFORM_FEE) / ThesisHubConstants.DENOMINATOR;
+        uint256 authorFeeInUSD = totalAmountInUSD - platformFee;
+        if (authorFeeInUSD > 0) {
+            IERC20(thesisHubConfig.getAddress(ThesisHubConstants.PYUSD_ADDRESS)).safeTransfer(_author, authorFeeInUSD);
         }
     }
 }

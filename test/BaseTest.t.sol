@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import { Test, console2 } from "forge-std/Test.sol";
 
+import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ProxyAdmin } from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
@@ -16,12 +17,19 @@ import { IThesisHubConfig } from "../src/interfaces/IThesisHubConfig.sol";
 import { IThesisHubMaster } from "../src/interfaces/IThesisHubMaster.sol";
 import { IThesisHubTokenFactory } from "../src/interfaces/IThesisHubTokenFactory.sol";
 
+contract MockERC20 is ERC20 {
+    constructor() ERC20("Mock Token", "MOCK") {
+        _mint(msg.sender, 1000000 * 10**18);
+    }
+}
+
 contract BaseTest is Test {
     ProxyAdmin public proxyAdmin;
     ThesisHubToken public thesisHubToken;
     ThesisHubMaster public thesisHubMaster;
     ThesisHubConfig public thesisHubConfig;
     ThesisHubTokenFactory public thesisHubTokenFactory;
+    address public pyUSD;
 
     address public bot;
     address public user;
@@ -41,6 +49,8 @@ contract BaseTest is Test {
         vm.startPrank(admin);
 
         proxyAdmin = new ProxyAdmin(admin);
+
+        pyUSD = address(new MockERC20());
 
         ThesisHubConfig thesisHubConfigImpl = new ThesisHubConfig();
         TransparentUpgradeableProxy thesisHubConfigProxy =
@@ -65,10 +75,11 @@ contract BaseTest is Test {
             cid: "thesiscid",
             title: "test thesis",
             description: "description",
-            costInNativeInWei: 1 ether / 100
+            costInUSD: 10 ** 6 / 100
         }), address(thesisHubConfig));
 
         thesisHubConfig.setUint256(ThesisHubConstants.PLATFORM_FEE, 500); // 5%
+        thesisHubConfig.setAddress(ThesisHubConstants.PYUSD_ADDRESS, address(pyUSD));
         thesisHubConfig.setAddress(ThesisHubConstants.THESIS_HUB_MASTER_ADDRESS, address(thesisHubMaster));
         thesisHubConfig.setAddress(ThesisHubConstants.TOKEN_FACTORY_ADDRESS, address(thesisHubTokenFactory));
 
